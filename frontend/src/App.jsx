@@ -1,7 +1,7 @@
 import { useState, useContext, createContext } from "react";
 
 // ─── API Base URL ─────────────────────────────────────────────────────────────
-const API = "http://localhost:5000/api";
+const API = "https://backend.blueground-ac897443.southindia.azurecontainerapps.io/api";
 
 // ─── Auth Context ─────────────────────────────────────────────────────────────
 const AuthContext = createContext(null);
