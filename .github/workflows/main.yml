@@ -6,15 +6,15 @@ on:
       - main
 
 env:
-  RESOURCE_GROUP: madhanait-rg
-  LOCATION: southindia
+  RESOURCE_GROUP: cookies-jar
+  LOCATION: centralcanada
 
-  ACR_NAME: madhanacr
-  ACR_LOGIN_SERVER: madhanacr.azurecr.io
+  ACR_NAME: cookiesjaracr
+  ACR_LOGIN_SERVER: cookiesjaracr.azurecr.io
 
   FRONTEND_APP: frontend
   BACKEND_APP: backend
-  CONTAINERAPPS_ENV: madhan-env
+  CONTAINERAPPS_ENV: cookies-jar-env
 
 permissions:
   id-token: write
