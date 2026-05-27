@@ -12,8 +12,8 @@ env:
   ACR_NAME: cookiesjaracr
   ACR_LOGIN_SERVER: cookiesjaracr.azurecr.io
 
-  FRONTEND_APP: frontend
-  BACKEND_APP: backend
+  FRONTEND_APP: aca-cookies-frontend
+  BACKEND_APP: aca-cookies-backend
   CONTAINERAPPS_ENV: cookies-jar-env
 
 permissions:
