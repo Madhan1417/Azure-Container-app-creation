@@ -4,195 +4,196 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || "change_this_in_production";
 
-// =====================
-// Middleware
-// =====================
+// ─────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────
+const PORT = process.env.PORT || 3001;
+const SECRET = process.env.JWT_SECRET || "supersecret";
+
+// ─────────────────────────────────────────────
+// MIDDLEWARE
+// ─────────────────────────────────────────────
 app.use(express.json());
 
-// 🔥 CORS FIX (Azure + local + production safe)
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "https://frontend--0000002.blueground-ac897443.southindia.azurecontainerapps.io"
-];
+app.use(
+  cors({
+    origin: [
+      "https://aca-cookies-frontend--0000007.salmonmushroom-d1788df3.canadacentral.azurecontainerapps.io",
+    ],
+    credentials: true,
+  })
+);
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow Postman / curl
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    // TEMP SAFE MODE (prevents Azure blocking during debugging)
-    return callback(null, true);
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
-
-// Handle preflight requests
-app.options("*", cors());
-
-// =====================
-// In-memory DB (demo only)
-// =====================
+// ─────────────────────────────────────────────
+// DEMO DATABASE
+// ─────────────────────────────────────────────
 const users = [];
 
-// =====================
-// JWT Middleware
-// =====================
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ message: "Access token required" });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: "Invalid or expired token" });
-    }
-
-    req.user = user;
-    next();
+// ─────────────────────────────────────────────
+// ROOT ROUTE
+// ─────────────────────────────────────────────
+app.get("/", (req, res) => {
+  res.json({
+    status: "API is running 🚀",
+    message: "Welcome to Azure Container Apps Backend Service",
   });
-}
-
-// =====================
-// ROUTES
-// =====================
-
-// Health check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
 });
 
-// Register
+// ─────────────────────────────────────────────
+// HEALTH CHECK
+// ─────────────────────────────────────────────
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "Backend running successfully 🚀",
+    message: "Welcome to ACA Backend Health Endpoint",
+  });
+});
+
+// ─────────────────────────────────────────────
+// REGISTER
+// ─────────────────────────────────────────────
 app.post("/api/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
+    const existingUser = users.find((u) => u.email === email);
 
-    if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
-    }
-
-    const existingUser = users.find(u => u.email === email);
     if (existingUser) {
-      return res.status(409).json({ message: "User already exists" });
+      return res.status(400).json({
+        message: "User already exists",
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = {
+    const user = {
       id: Date.now().toString(),
       name,
       email,
       password: hashedPassword,
-      createdAt: new Date().toISOString()
     };
 
-    users.push(newUser);
+    users.push(user);
 
-    const token = jwt.sign(
-      { id: newUser.id, email: newUser.email },
-      JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    res.status(201).json({
-      message: "Account created successfully",
-      token,
-      user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email
-      }
+    const token = jwt.sign({ id: user.id }, SECRET, {
+      expiresIn: "1h",
     });
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// Login
-app.post("/api/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password required" });
-    }
-
-    const user = users.find(u => u.email === email);
-    if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
     res.json({
-      message: "Login successful",
+      message: "User registered successfully 🚀",
       token,
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+  } catch (error) {
+    res.status(500).json({
+      message: "Registration failed",
+    });
   }
 });
 
-// Profile (Protected)
-app.get("/api/profile", authenticateToken, (req, res) => {
-  const user = users.find(u => u.id === req.user.id);
+// ─────────────────────────────────────────────
+// LOGIN
+// ─────────────────────────────────────────────
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = users.find((u) => u.email === email);
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
+    }
+
+    const validPassword = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    if (!validPassword) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
+    }
+
+    const token = jwt.sign({ id: user.id }, SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.json({
+      message: "Login successful 🚀",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Login failed",
+    });
+  }
+});
+
+// ─────────────────────────────────────────────
+// AUTH MIDDLEWARE
+// ─────────────────────────────────────────────
+function auth(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({
+      message: "No token provided",
+    });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+
+    req.user = decoded;
+
+    next();
+  } catch (error) {
+    return res.status(403).json({
+      message: "Invalid token",
+    });
+  }
+}
+
+// ─────────────────────────────────────────────
+// PROFILE
+// ─────────────────────────────────────────────
+app.get("/api/profile", auth, (req, res) => {
+  const user = users.find((u) => u.id === req.user.id);
 
   if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    return res.status(404).json({
+      message: "User not found",
+    });
   }
 
   res.json({
+    message: "Profile fetched successfully 🚀",
     user: {
       id: user.id,
       name: user.name,
       email: user.email,
-      createdAt: user.createdAt
-    }
+    },
   });
 });
 
-// Logout
-app.post("/api/logout", authenticateToken, (req, res) => {
-  res.json({ message: "Logged out successfully" });
-});
-
-// =====================
-// Start Server
-// =====================
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+// ─────────────────────────────────────────────
+// START SERVER
+// ─────────────────────────────────────────────
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Backend running on port ${PORT}`);
 });
